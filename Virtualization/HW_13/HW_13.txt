@@ -1,0 +1,83 @@
+# What is the tool free ?
+
+-> free zeigt die gesamt Anzahl an frei verfügbarem (physischen) speicher,
+    genutzem Speicher und swap speicher des derzeitigen Systems an aber auch
+    die puffer und caches welche vom Kernel genutzt werden.
+    
+# How does it ?
+
+--> Die Information wird gesammelt indem /proc/meminfo geparsed wird
+
+# What does it show ?
+
+-->  total  Total installed memory (MemTotal and SwapTotal in /proc/meminfo)
+
+       used   Used memory (calculated as total - free - buffers - cache)
+
+       free   Unused memory (MemFree and SwapFree in /proc/meminfo)
+
+       shared Memory used (mostly) by tmpfs (Shmem in /proc/meminfo)
+
+       buffers
+              Memory used by kernel buffers (Buffers in /proc/meminfo)
+
+       cache  Memory used by the page cache and slabs (Cached  and  SReclaimable
+              in /proc/meminfo)
+
+       buff/cache
+              Sum of buffers and cache
+
+       available
+              Estimation of how much memory is available for starting new appli‐
+              cations, without swapping. Unlike the data provided by  the  cache
+              or  free fields, this field takes into account page cache and also
+              that not all reclaimable memory slabs will  be  reclaimed  due  to
+              items  being  in  use (MemAvailable in /proc/meminfo, available on
+              kernels 3.14, emulated on kernels 2.6.27+, otherwise the  same  as
+              free)
+              
+# Optionen:
+
+    -b --> bytes
+    -k --> kibi (default)
+    -m --> mebi
+    -g -->gibi
+    
+    
+    --mega
+    --kilo
+    --giga
+    --tera
+    
+    -h, --human
+        skaliert zur kleinsten 3stelligen zahl 
+    -w, --wide
+        longer lines..
+    -c, --count 
+        display result count times
+        
+    --si
+        use kilo, mega, giga etc (power of 1000) instead kibi mebi...
+        
+    -t, total
+        display a line showing the column totals
+        
+        
+# Files 
+    /proc/meminfo
+            memory information
+            
+-->  free -h --si -t
+              gesamt      belegt       frei     gemeinsam    Zwischen   verfügbar
+Speicher:        3,1G        1,1G        212M         62M        1,7G        1,7G
+Auslager:        875M          0B        875M
+Gesamt  :        3,9G        1,1G        1,1G
+
+
+How
+much memory is in your system? How much is free? Do these
+numbers match your intuition?
+
+Habe 3,1G an meine VM übergeben, wieso sind es insgesamt 3,9 ? sind diese für den Kernel ? (AUSLAGER)
+
+
