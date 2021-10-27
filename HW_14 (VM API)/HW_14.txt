@@ -1,0 +1,186 @@
+#HW_14.txt
+ 
+    22.10.2021
+    Sebastian Kaeser, Daniel Rill
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 14     " Interlude: Memory API "
+
+######################################################
+
+1. First, write a simple program called null.c that creates a pointer
+    to an integer, sets it to NULL, and then tries to dereference it. Com-
+    pile this into an executable called null. What happens when you
+    run this program?
+    
+--> The programm will run unless, we want to access the dereferenced value,
+        which causes a segmentation fault
+
+######################################################
+
+2. Next, compile this program with symbol information included (with
+    the -g flag). Doing so let’s put more information into the exe-
+    cutable, enabling the debugger to access more useful information
+    about variable names and the like. Run the program under the de-
+    bugger by typing gdb null and then, once gdb is running, typing
+    run. What does gdb show you?
+
+--> We receive the signal SIGSEV (Schutzverletzung) // dereferencing a null ptr
+gdb null
+    run
+
+
+Welcome to a segmentation fault ! 
+before setting the ptr = Null
+address of int eger: 0x7fffffffe4c0 
+
+Program received signal SIGSEGV, Segmentation fault.
+0x000055555555522e in main () at null.c:13
+13		printf("value of int eger: %d \n", *eger); // thats the bad one
+
+######################################################
+
+3. Finally, use the valgrind tool on this program. We’ll use the memcheck
+    tool that is a part of valgrind to analyze what happens. Run
+    this by typing in the following: valgrind --leak-check=yes
+    null. What happens when you run this? Can you interpret the
+    output from the tool?
+    
+    
+valgrind --leak-check=yes ./null
+
+    Invalid read of size 4
+    at 0x10922E: main (null.c:13)
+    Address 0x0 is not stack'd, malloc'd or (recently) free'd
+    
+    Process terminating with default action of signal 11 (SIGSEGV)
+    Access not within mapped region at address 0x0
+        at 0x10922E: main (null.c:13)
+        
+HEAP SUMMARY:
+    in use at exit: 4 bytes in 1 blocks
+    total heap usage: 2 allocs, 1 frees, 1,028 bytes allocated
+
+    4 bytes in 1 blocks are definitely lost in loss record 1 of 1
+   at 0x483C7F3: 
+   malloc (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_memcheck-amd64-linux.so)
+    by 0x1091F9: main (null.c:7)
+ 
+ LEAK SUMMARY:
+     -->    definitely lost: 4 bytes in 1 blocks
+     
+     indirectly lost: 0 bytes in 0 blocks
+       possibly lost: 0 bytes in 0 blocks
+    still reachable: 0 bytes in 0 blocks
+         suppressed: 0 bytes in 0 blocks
+
+
+######################################################
+
+4. Write a simple program that allocates memory using malloc() but
+    forgets to free it before exiting. What happens when this program
+    runs? Can you use gdb to find any problems with it? How about
+    valgrind (again with the --leak-check=yes flag)?
+    
+    
+    -Wall -Wextra -Werror -pedantic (doesnt help to find the problem)
+    
+    The programm runs and exits normally 
+    surprisingly gdb does not show anything at all
+    
+    Whereas valgrind shows the exact command which caused some lost bytes 
+
+######################################################
+
+5. Write a program that creates an array of integers called data of size
+    100 using malloc; then, set data[100] to zero. What happens
+    when you run this program? What happens when you run this
+    program using valgrind? Is the program correct?
+  
+-->  
+    The Programm runs as it should, but thanks to valgrind we can detect 
+    some errors
+ Invalid write of size 4
+ at 0x1091DC: main (data.c:12)
+ Address 0x4a4c1d0 is 320 bytes inside an unallocated 
+ block of size 4,194,128 in arena "client"
+ 
+ 
+ the not dynamicly allocated data eg [100] or [200] get reported by valgrind 
+ invalid write of 4 bytes or the later 8 bytes
+
+######################################################   
+    
+6. Create a program that allocates an array of integers (as above), frees
+    them, and then tries to print the value of one of the elements of
+    the array. Does the program run? What happens when you use
+    valgrind on it?
+    
+--> The Programm runs well, behaves as it should.
+        Contrary to that, valgrind shows errors, like:
+        
+        Address 0x4a4c044 is 0 bytes after a block of size 4 alloc'd
+
+        In the more detailed report it says:
+        
+        Invalid read of size 4
+        Invalid write of size 4
+        
+        ERROR SUMMARY: 40 errors from 4 contexts
+        
+        But why is it that it only found 40 errors ?
+        shouldnt there be an error for each number ?
+        
+        Basicly this could supose a threat in a system where many programms run at once
+        Dependend on which strategy malloc uses (nearest Block, biggest block, smallest block etc.)
+        this space could get used up by another process before the initial process shutsdown completly
+        
+######################################################     
+
+7. Now pass a funny value to free (e.g., a pointer in the middle of the
+    array you allocated above). What happens? Do you need tools to
+    find this type of problem?       
+       
+       The programm first behaves as it should (print values)
+       until it hits the free() command, which causes an interrupt
+       and at the end definetly lost blocks
+       
+--> munmap_chunk(): invalid pointer
+    zsh: abort (core dumped)  ./intData
+    
+    LEAK SUMMARY:
+==3347==    definitely lost: 4 bytes in 1 blocks
+
+
+Invalid free() / delete / delete[] / realloc()
+
+######################################################
+
+8. Try out some of the other interfaces to memory allocation. For ex-
+    ample, create a simple vector-like data structure and related rou-
+    tines that use realloc() to manage the vector. Use an array to
+    store the vectors elements; when a user adds an entry to the vec-
+    tor, use realloc() to allocate more space for it. How well does
+    such a vector perform? How does it compare to a linked list? Use
+    valgrind to help you find bugs.
+    
+    Run time should be O(n)
+    
+    The probably best property for an array is, that we get one continious
+    chunk of memory, whereas a linked list can store its nodes everywhere
+    for the cost of providing a pointer to the next element (extra mem needed)
+    
+    Also the cache locality of arrays can make a significant difference in terms of
+    performance
+    (quick iteration)
+    
+    deleting and adding new values inside the array(not the borders)
+    is usually costly
+
+    if we reach the capacity we need to do expensive copies
+    
+######################################################    
+    
+9. Spend more time and read about using gdb and valgrind. Know-
+    ing your tools is critical; spend the time and learn how to become
+    an expert debugger in the UNIX and C environment.       
