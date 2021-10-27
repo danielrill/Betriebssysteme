@@ -1,0 +1,476 @@
+ #HW_5.txt
+ 
+    08.10.2021
+    Sebastian Kaeser, Daniel Rill
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 5     " Process API "
+    
+#########################################################
+    
+1. Run ./fork.py -s 10 and see which actions are taken. Can you
+    predict what the process tree looks like at each step? Use the -c
+    flag to check your answers. Try some different random seeds (-s)
+    or add more actions (-a) to get the hang of it.
+    
+    
+python3 fork.py -s 5  
+    
+                               Process Tree:
+                               a
+
+Action: a forks b
+Process Tree?
+Action: b EXITS
+Process Tree?
+Action: a forks c
+Process Tree?
+Action: c EXITS
+Process Tree?
+Action: a forks d
+Process Tree?
+
+
+    a
+    a->b
+                b+
+                b-
+    a<-b
+    a->c
+                c+
+                c-
+    a<-c
+    a->d
+                d+
+                
+Auflösung:
+
+python3 fork.py -s 5 -c
+
+                           Process Tree:
+                               a
+
+Action: a forks b
+                               a
+                               └── b
+Action: b EXITS
+                               a
+Action: a forks c
+                               a
+                               └── c
+Action: c EXITS
+                               a
+Action: a forks d
+                               a
+                               └── d
+
+python3 fork.py -A a+b,b+c,c+d,d+e,e+f,f-,b-
+
+    a
+    a->b
+                b+
+                b->c
+                            c+
+                            c->d
+                                        d+
+                                        d->e
+                                                   e+
+                                                   e->f
+                                                                f+
+                                                                f-
+                b-
+                
+      Bleibt also:
+      
+      a->c
+      a->d
+      a->e    
+      
+ Auflösung:
+ 
+                               Process Tree:
+
+
+Action: e forks f
+                               a
+                               └── b
+                                   └── c
+                                       └── d
+                                           └── e
+                                               └── f
+Action: f EXITS
+                               a
+                               └── b
+                                   └── c
+                                       └── d
+                                           └── e
+Action: b EXITS
+                               a
+                               ├── c
+                               ├── d
+                               └── e
+
+python3 fork.py -A a+b,a+c,c+d,d+e,e+f,f+g,g+h,e-
+    a
+    a->b
+                b+
+    a->c
+                c+
+                c->d
+                            d+
+                            d->e
+                                        e+
+                                        e->f
+                                                    f+
+                                                    f->g
+                                                                g+
+                                                                g->h
+                                                                            h+
+                                        e-
+                                        
+Bleibt also
+
+    a->b
+    a->c
+            c->d
+    a->f
+    a->g
+    a->h
+    
+Auflösung:
+
+Action: g forks h
+                               a
+                               ├── b
+                               └── c
+                                   └── d
+                                       └── e
+                                           └── f
+                                               └── g
+                                                   └── h
+Action: e EXITS
+                               a
+                               ├── b
+                               ├── c
+                               │   └── d
+                               ├── f
+                               ├── g
+                               └── h
+
+python3 fork.py -A a+b,a+c,c-,b+d,d+e,e+f,f+g,g+h,h+i,f-,h+f
+
+    a
+    a->b
+                b+
+    a->c
+                c+
+                c-
+                b->d
+                            d+
+                            d->e
+                                        e+
+                                        e->f
+                                                        f+
+                                                        f->g
+                                                                    g+
+                                                                    g->h
+                                                                                    h+
+                                                                                    h->i
+                                                        f-
+                                                                                    h->f
+                                                                                    
+ Bleibt also:
+ 
+    a->b
+            b->d
+                    d->e
+                            e->f   // Fehler    f-
+     a->g
+            g->h                // Fehler : da -f ist nun   init (a) der Parent     a->g
+                    h->f
+                             h->i  // Fehler : da -f ist nun   init (a) der Parent   a->i
+                             
+Auflösung:
+
+Action: h forks i
+                               a
+                               └── b
+                                   └── d
+                                       └── e
+                                           └── f
+                                               └── g
+                                                   └── h
+                                                       └── i
+Action: f EXITS
+                               a
+                               ├── b
+                               │   └── d
+                               │       └── e
+                               ├── g
+                               ├── h
+                               └── i
+Action: h forks f
+                               a
+                               ├── b
+                               │   └── d
+                               │       └── e
+                               ├── g
+                               ├── h
+                               │   └── f        // hier wurde f neu erzeugt.
+                               └── i
+
+da f einmal gelöscht wurde, haben sich die Prozess-beziehungen bei den von f erzeugten forks geändert,  g,h,i   wurden von      a geerbt
+Process 1 is a _ init_ process
+process 0 Scheduler ?
+
+#########################################################
+                                      
+2. One control the simulator gives you is the { fork percentage }, con-
+    trolled by the { -f flag }. The higher it is, the more likely the next
+    action is a fork; the lower it is, the more likely the action is an
+    exit. Run the simulator with a large number of actions (e.g., -a
+    100) and vary the fork percentage from 0.1 to 0.9. What do you
+    think the resulting final process trees will look like as the percent-
+    age changes? Check your answer with -c.
+    
+    
+Antwort:
+
+    with a low percentage; the forked processes will preferably be childs of { a },
+    with a few exceptions where the depth might get up to 2 (and maaybe 3(very rare)).
+    
+    python3 fork.py -a 200 -f 0.1 -c
+            with 200 processes tested, the initial assumption was on point (wow 'ses !)
+                only during and for only one timestamp the processtree had a depth of 3.
+                most of the time there was only one forked process.
+                
+    with a high percentage; the processtree will grow very big in terms of depth,
+    and probably only a very small amount will be childs of a ( probably 5-10% )
+    
+              
+    python3 fork.py -a 100 -f 0.9 -c
+            with 100 processes tested, the max depth went up to 7 
+            at the last timestamp process { _init_a } was the parent of 12 processes,
+            ~ 100 processes still were active at the end,
+            
+                so the initial assumption 5-10 % will be childs of a, wasnt that actually bad
+                
+         -> with 300 processes tested, 
+                the process tree depth never went above 8 ( -> assuming a is 0)
+          -> with 1000 processes tested, 
+                the depth max'ed out at 12
+          -> with 2000 processes tested, 
+                the depth max'ed out at 12   ( can we go deeper ? )
+                
+           -> with 6000 processes tested,
+           python3 fork.py -a 6000 -f 0.9 -c
+                 we measured a max depth of 15  ( altough _very_very_ rare )
+
+                               │   │   │   │   ├── kP
+                               │   │   │   │   │   └── qz
+                               │   │   │   │   │       ├── td
+                               │   │   │   │   │       │   ├── ul
+                               │   │   │   │   │       │   │   ├── uG
+                               │   │   │   │   │       │   │   │   └── uU
+                               │   │   │   │   │       │   │   │       ├── Bd
+                               │   │   │   │   │       │   │   │       │   └── Hv
+                               │   │   │   │   │       │   │   │       │       └── alH
+                               │   │   │   │   │       │   │   │       │           └── alT
+                               │   │   │   │   │       │   │   │       │               └── avJ
+                               │   │   │   │   │       │   │   │       └── add
+                               │   │   │   │   │       │   │   └── awj
+                               │   │   │   │   │       │   ├── Ia
+                               │   │   │   │   │       │   │   ├── aoQ
+                               │   │   │   │   │       │   │   └── aAd
+                               │   │   │   │   │       │   └── auA
+                               │   │   │   │   │       └── aoX
+                               │   │   │   │   └── qr
+                      -->  a very long time we encountered patterns like this:
+                        
+                               │   ├── awr
+                               │   │   └── axJ
+                               │   └── axt
+                               ├── XM
+                               ├── Nr
+                               ├── Xx
+                               ├── aeE
+                               ├── aet
+                               │   └── aAs
+                               ├── rS
+                               ├── AG
+                               │   └── app
+                               │       └── aAT
+                               ├── afp
+                               ├── Jx
+                               ├── abC
+                               ├── HT
+                               
+                         --> or something in between:
+                         
+                               │   ├── Ei
+                               │   │   ├── Ra
+                               │   │   │   ├── afm
+                               │   │   │   │   └── ajV
+                               │   │   │   │       └── awa
+                               │   │   │   └── atU
+                               │   │   └── anZ
+                               │   │       └── aAm
+                               │   ├── ahI
+                               │   │   └── awI
+                               │   └── alS
+                               ├── yz
+                               │   ├── Ko
+                               │   │   └── axB
+                               │   └── No
+                               ├── CK
+                               │   └── LA
+                               ├── yn
+                               ├── CE
+                               │   ├── TJ
+                               │   ├── WS
+                               
+#########################################################                               
+                               
+3. Now, switch the output by using the -t flag (e.g., run ./fork.py
+    -t). Given a set of process trees, can you tell which actions were
+    taken?
+    
+    
+                           Process Tree:
+                               a
+
+Action?         a->b
+                                    b+
+                                    
+                               a
+                               └── b
+Action?         a->c
+                                    c+
+                               a
+                               ├── b
+                               └── c
+Action?         b->d
+                                           d+
+                               a
+                               ├── b
+                               │   └── d
+                               └── c
+Action?             -c
+                               a
+                               └── b
+                                   └── d
+Action?             a->e
+                                            e+
+                               a
+                               ├── b
+                               │   └── d
+                               └── e
+                               
+#########################################################
+
+4. One interesting thing to note is what happens when a child exits;
+    what happens to its children in the process tree? To study this, let’s
+    create a specific example: ./fork.py -A a+b,b+c,c+d,c+e,c-.
+    This example has process ’a’ create ’b’, which in turn creates ’c’,
+    which then creates ’d’ and ’e’. However, then, ’c’ exits. What do
+    you think the process tree should like after the exit? What if you
+    use the -R flag? Learn more about what happens to orphaned pro-
+    cesses on your own to add more context     
+    
+Antwort:
+    With the -R flag the process relation (upon exiting) does not switch to 
+    the init process { a }, it changes to the local parent 
+    
+Action: c forks e
+                               a
+                               └── b
+                                   └── c
+                                       ├── d
+                                       └── e
+Action: c EXITS
+                               a
+                               └── b
+                                   ├── d
+                                   └── e
+                         
+                               // d and e are now children of b
+#########################################################
+                               
+5. One last flag to explore is the -F flag, which skips intermediate
+    steps and only asks to fill in the final process tree. Run ./fork.py
+    -F and see if you can write down the final tree by looking at the
+    series of actions generated. Use different random seeds to try this a
+    few times.            
+    
+                           Process Tree:
+                               a
+
+Action: a forks b
+Action: b forks c
+Action: b EXITS
+Action: c EXITS
+Action: a forks d
+
+                        Final Process Tree?
+
+        a->b
+                b+
+                b->c
+                        c+
+                b-
+         a->c
+                          c-
+                          
+          a->d
+          
+          
+       Final :
+       
+       a->d 
+       
+#########################################################       
+       
+6. Finally, use both -t and -F together. This shows the final process
+    tree, but then asks you to fill in the actions that took place. By look-
+    ing at the tree, can you determine the exact actions that took place?
+    In which cases can you tell? In which can’t you tell? Try some dif-
+    ferent random seeds to delve into this question.           
+    
+    
+                            Final Process Tree:
+                               a
+                               └── b
+                                   ├── c
+                                   ├── d
+                                   ├── e
+                                   └── f
+
+        a->b
+                    b+
+                    b->c
+                    b->d
+                    b->e
+                    b->f
+                    
+                              Final Process Tree:
+                               a
+                               ├── c
+                               │   └── d
+                               └── e
+                               
+          a->b
+                        b+
+                        b-
+           a->c
+           
+           
+           c->d
+           a->e
+
+Auflösung:
+
+Action: a forks b
+Action: b EXITS
+Action: a forks c
+Action: c forks d
+Action: a forks e
