@@ -1,0 +1,97 @@
+#HW_7.txt
+ 
+    09.10.2021
+    Sebastian Kaeser, Daniel Rill
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 7     " Scheduling Basics "
+    
+    
+######################################################################
+
+1. Compute the response time and turnaround time when running three jobs of length 200 with the SJF and FIFO schedulers.
+
+==> FIFO und SJF bringt ungefähr die gleiche Performance, während bei RR die Response-Time deutlich geringer ist, aber die Turnaround Time höher ist.
+
+######################################################################
+
+2. Now do the same but with jobs of different lengths: 100, 200, and 300.
+
+==> FIFO (Länge=1000) Average -- Response: 816.00  Turnaround 1490.67  Wait 816.00
+==> SJF (Länge=1000) Average -- Response: 533.33  Turnaround 1208.00  Wait 533.33
+==> RR   (Länge=1000) Average -- Response: 1.00  Turnaround 1741.33  Wait 1066.67
+
+######################################################################
+
+3. Now do the same, but also with the RR scheduler and a time-slice of 1.
+
+==>q = 5  Average -- Response: 5.00  Turnaround 1744.67  Wait 1070.00
+==>q = 10 Average -- Response: 10.00  Turnaround 1748.00  Wait 1073.33
+==>q = 100 Average -- Response: 100.00  Turnaround 1808.00  Wait 1133.33
+==>q = 1000 Average -- Response: 816.00  Turnaround 1490.67  Wait 816.00 
+
+######################################################################
+
+4. For what types of workloads does SJF deliver the same turnaround times as FIFO?
+
+==> Wenn die Jobs der Dauer nach aufsteigende sortiert sind braucht der FIFO-Ansatz genau gleich lange wie der SJF-Ansatz
+
+######################################################################
+
+5. For what types of workloads and quantumlengths does SJF deliver the same response times as RR?
+
+==> Wenn die Jobs alle die Länge N haben, dann hat RR mit der quantum length N genau die selbe Reaktionszeit wie SJF
+==> Also für ehr kürzere Jobs kann SJF die selbe Reaktionszeit haben wie RR, da die Jobs durch die kurze Zeit auch schnell wechseln
+
+######################################################################
+
+6. What happens to response time with SJF as job lengths increase? Can you use the simulator to demonstrate the trend?
+
+==> Wenn die Job length größer wird vergrößert sich auch die Reaktionszeit. 
+
+==> Die akkumulierte Summe / anzahl der Jobs -> Response Time
+
+./scheduler.py -l 10,10,10,10,10 -p SJF -c
+
+(0 + 10 + 20 + 30 + 40) / 5
+
+Job   0 -- Response: 0.00  Turnaround 10.00  Wait 0.00
+  Job   1 -- Response: 10.00  Turnaround 20.00  Wait 10.00
+  Job   2 -- Response: 20.00  Turnaround 30.00  Wait 20.00
+  Job   3 -- Response: 30.00  Turnaround 40.00  Wait 30.00
+  Job   4 -- Response: 40.00  Turnaround 50.00  Wait 40.00
+
+  Average -- Response: 20.00  Turnaround 30.00  Wait 20.00
+
+
+./scheduler.py -l 10,20,30,40 -p SJF -c
+
+
+(0 + 10+ 30+ 60) / 4
+
+Job   0 -- Response: 0.00  Turnaround 10.00  Wait 0.00
+  Job   1 -- Response: 10.00  Turnaround 30.00  Wait 10.00
+  Job   2 -- Response: 30.00  Turnaround 60.00  Wait 30.00
+  Job   3 -- Response: 60.00  Turnaround 100.00  Wait 60.00
+
+  Average -- Response: 25.00  Turnaround 50.00  Wait 25.00
+
+
+./scheduler.py -l 30,40,60,70 -p SJF -c
+
+(0 + 30 + 70 + 130) / 4
+
+Job   0 -- Response: 0.00  Turnaround 30.00  Wait 0.00
+  Job   1 -- Response: 30.00  Turnaround 70.00  Wait 30.00
+  Job   2 -- Response: 70.00  Turnaround 130.00  Wait 70.00
+  Job   3 -- Response: 130.00  Turnaround 200.00  Wait 130.00
+
+  Average -- Response: 57.50  Turnaround 107.50  Wait 57.50
+
+######################################################################
+
+7. What happens to response time with RR as quantum lengths in- crease? Can you write an equation that gives the worst-case re- sponse time, given N jobs?
+
+
+==> Wenn die quantum länge sich vergrößert vergrößert sich auch die Reaktionszeit
+==> ((n-1) * q) / 2 = durchschnittliche ResponseTime (n=Anzahl,q=Quantum)
