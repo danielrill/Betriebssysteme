@@ -1,0 +1,393 @@
+ #HW_16.txt
+ 
+    02.10.2021
+    Sebastian Kaeser, Daniel Rill
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 4     " SEGMENTATION "
+
+1. First let’s use a tiny address space to translate some addresses. Here’s
+    a simple set of parameters with a few different random seeds; can
+    you translate the addresses?
+
+
+./segmentation.py -a 128 -p 512 -b 0 -l 20 -B 512 -L 20 -s 0
+
+Segment register information:
+
+ARG address space size 128
+ARG phys mem size 512
+
+
+  Segment 0 base  (grows positive) : 0x00000000 (decimal 0)
+  Segment 0 limit                  : 20
+
+  Segment 1 base  (grows negative) : 0x00000200 (decimal 512)
+  Segment 1 limit                  : 20
+
+
+SEG0        [ 0                 20 ] 
+                [0x00..    0x00..14]
+                
+SEG1        [492                512]
+                [0x000..1ec     0x000..200]
+                
+                
+                
+VA 0 :      0x0000006c (decimal:  108)     Valid in SEG 1 !?
+                         0x00000200 - 0x0000006c        = 0x00000194
+                         512            - 108                         = 404         
+                         
+                            404 + 128 = 532
+                            532 - 512 = 20;
+                            
+                            512 - 20    =  492
+                         
+                 Valid in   SEG1: 0x000001ec    (492)  WTF
+                         
+   VA  0: 0x0000007a (decimal:  122) --> VALID in SEG1: 0x000001fa (decimal:  506)
+                      512 - 122 = 390
+                         390 + 128 = 518
+                         518 - 512  = 6
+                         
+                         512 - 6    = 506
+                         
+                         
+VA  2: 0x00000032 (decimal:   50) --> PA or segmentation violation?
+
+                        512 - 50        =  462
+                        462 + 128 = 590
+                        590 - 512   = 78
+                        
+                        512 - 78    = 434
+                         
+                         
+ VA  1: 0x0000000d (decimal:   13)
+ 
+                        512 - 13 = 499
+                        499 + 128 = 627
+                        627 - 512 = 115
+                        
+                        512 - 115 = 397
+                         
+                         
+  VA  0: 0x00000029 (decimal:   41) --> PA or segmentation violation?
+                                    512 - 41 = 471
+                                    471 + 128 = 599
+                                    599 - 512 = 87
+                                    
+                                            512 - 87 = 425      Not Valid
+      
+  VA  1: 0x00000013 (decimal:   19) --> PA or segmentation violation?
+    SEG0
+  VA  2: 0x00000053 (decimal:   83) --> PA or segmentation violation?
+                            512- 83 = 429
+                            429 + 128 = 557
+                            557 -512    = 45
+                            
+                            512 - 45    = 467       Not Valid
+                    
+  VA  3: 0x00000009 (decimal:    9) --> PA or segmentation violation?
+  Seg1
+  VA  4: 0x00000044 (decimal:   68) --> PA or segmentation violation?
+  
+                                512 - 68 = 444
+                                444+ 128 = 572
+                                572 - 512 = 60      Not VAlid
+                         
+                         
+Virtual Address Trace
+  VA  0: 0x0000001d (decimal:   29) --> PA or segmentation violation?
+  
+  SEG0 Not valid
+  
+  
+  VA  1: 0x0000007b (decimal:  123) --> PA or segmentation violation?
+                    512 - 123 = 389 + 128 = 517 - 512 = 5
+                                                                            512 -5 = 507   (SEG1) Valid
+  
+  VA  2: 0x00000010 (decimal:   16) --> PA or segmentation violation?
+  Seg0 valid
+  
+  VA  3: 0x0000005a (decimal:   90) --> PA or segmentation violation?
+  
+                    512 - 90 = 422 + 128 = 550 
+                    550 - 512   = 38
+                    Not valid SEg1
+  
+  
+  VA  4: 0x0000000a (decimal:   10) --> PA or segmentation violation?
+   Seg0 valid
+   
+   
+   
+1. Check if address is in between SEG0limits
+2. If not in SEG0 calculate if its in SEG1
+
+
+            negate Virtual Address 
+            add Address space size
+            
+            (check for bounds)
+            Sum is the physical address
+            
+            -123 + 128 = 5      (inside limit ?) yes
+            
+            512 -5 = 507 proof
+            
+  VA  3: 0x0000006e (decimal:  110) --> PA or segmentation violation?
+        
+    - 110 + 128 = 18        inside limit
+    
+    512 - 18 = 494 physical address
+    
+    proof:
+    
+    --> VALID in SEG1: 0x000001ee (decimal:  494)
+    
+ 2. Now, let’s see if we understand this tiny address space we’ve con-
+    tructed (using the parameters from the question above). What is
+    the highest legal virtual address in segment 0? 
+    
+    
+    What about the low-
+    est legal virtual address in segment 1? What are the lowest and
+    highest illegal addresses in this entire address space? Finally, how
+    would you run segmentation.py with the -A flag to test if you
+    are right?   
+    
+SEG0        [ 0                 19] 
+                [0x00..    0x00..14]
+                
+SEG1        [492                512]
+                [0x000..1ec     0x000..200]
+
+./segmentation.py -a 128 -p 512 -b 0 -l 20 -B 512 -L 20 -s 1 -A 19,108,20,107,109, -c
+ARG seed 1
+ARG address space size 128
+ARG phys mem size 512
+
+Segment register information:
+
+  Segment 0 base  (grows positive) : 0x00000000 (decimal 0)
+  Segment 0 limit                  : 20
+
+  Segment 1 base  (grows negative) : 0x00000200 (decimal 512)
+  Segment 1 limit                  : 20
+
+Virtual Address Trace
+  VA  0: 0x00000013 (decimal:   19) --> VALID in SEG0: 0x00000013 (decimal:   19)
+  VA  1: 0x0000006c (decimal:  108) --> VALID in SEG1: 0x000001ec (decimal:  492)
+  VA  2: 0x00000014 (decimal:   20) --> SEGMENTATION VIOLATION (SEG0)
+  VA  3: 0x0000006b (decimal:  107) --> SEGMENTATION VIOLATION (SEG1)
+  VA  4: 0x0000006d (decimal:  109) --> VALID in SEG1: 0x000001ed (decimal:  493)
+  
+  
+              negate Virtual Address 
+            add Address space size
+            
+            (check for bounds)
+            Sum is the physical address
+            
+            -123 + 128 = 5      (inside limit ?) yes
+            
+            512 -5 = 507 proof
+            
+            
+            
+            
+3. Let’s say we have a tiny 16-byte address space in a 128-byte physical
+    memory. What base and bounds would you set up so as to get
+    the simulator to generate the following translation results for the
+    specified address stream: valid, valid, violation, ..., violation, valid,
+    valid? Assume the following parameters:
+    segmentation.py -a 16 -p 128 -A 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+--b0 ? --l0 ? --b1 ? --l1 ?            
+               
+               
+ARG seed 0
+ARG address space size          16
+ARG phys mem size 128
+
+Segment register information:
+
+  Segment 0 base  (grows positive) : 0x00000035 (decimal 53)
+  Segment 0 limit                  : 7
+    
+                                                                                                                
+  Segment 1 base  (grows negative) : 0x00000028 (decimal 40)        
+  Segment 1 limit                   : 7                                                             
+  
+  
+            [ 33    40]  SEG1
+  
+              [ 53   60 ]   SEG0
+              
+              
+              
+  
+  [ 33   bis  exclusive 40 ]  [ 53 bis  exclusive 60 ]            virtual
+         SEG1                                   SEG0
+         
+        How to map into pysical ?!
+        
+  
+  [0 ...........................  128 ]         physical
+  
+        
+  
+                    
+                    
+                    
+ARG seed 0
+ARG address space size 16
+ARG phys mem size 128
+
+Segment register information:
+
+  Segment 0 base  (grows positive) : 0x00000035 (decimal 53)
+  Segment 0 limit                  : 7
+
+  Segment 1 base  (grows negative) : 0x00000028 (decimal 40)
+  Segment 1 limit                  : 7
+
+Virtual Address Trace
+  VA  0: 0x00000000 (decimal:    0) --> PA or segmentation violation?
+  VA  1: 0x00000001 (decimal:    1) --> PA or segmentation violation?
+  VA  2: 0x00000002 (decimal:    2) --> PA or segmentation violation?
+  VA  3: 0x00000003 (decimal:    3) --> PA or segmentation violation?
+  VA  4: 0x00000004 (decimal:    4) --> PA or segmentation violation?
+                    SEG0
+                    4 + 53 = 57
+  
+  VA  5: 0x00000005 (decimal:    5) --> PA or segmentation violation?
+  VA  6: 0x00000006 (decimal:    6) --> PA or segmentation violation?
+  VA  7: 0x00000007 (decimal:    7) --> PA or segmentation violation?
+                SEG1 
+                -7 + 16 = 9
+                40 -9 = 31      | out of Bounds
+                
+                SEG0
+                7 + 53 = 60
+  
+  VA  8: 0x00000008 (decimal:    8) --> PA or segmentation violation?
+            -8 + 16 = 8
+            40 - 8  = 32        | Out of Bounds !
+  
+  
+  VA  9: 0x00000009 (decimal:    9) --> PA or segmentation violation?
+  VA 10: 0x0000000a (decimal:   10) --> PA or segmentation violation?
+  
+        -10 + 16 = 6            | negate addres add to adress space size
+        40 - 6  = 34            |   subtract Base of segment and sum = physical Address
+        
+  VA 11: 0x0000000b (decimal:   11) --> PA or segmentation violation?
+  VA 12: 0x0000000c (decimal:   12) --> PA or segmentation violation?
+  VA 13: 0x0000000d (decimal:   13) --> PA or segmentation violation?
+  VA 14: 0x0000000e (decimal:   14) --> PA or segmentation violation?
+  VA 15: 0x0000000f (decimal:   15) --> PA or segmentation violation?
+                 
+                    
+                    ANTWORT: 
+                 
+./segmentation.py -a 16 -p 128 -A 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 --b0 0 --l0 2 --b1 16 --l1 2 -c
+ARG seed 0
+ARG address space size 16
+ARG phys mem size 128
+
+Segment register information:
+
+  Segment 0 base  (grows positive) : 0x00000000 (decimal 0)
+  Segment 0 limit                  : 2
+
+  Segment 1 base  (grows negative) : 0x00000010 (decimal 16)
+  Segment 1 limit                  : 2
+
+Virtual Address Trace
+  VA  0: 0x00000000 (decimal:    0) --> VALID in SEG0: 0x00000000 (decimal:    0)
+  VA  1: 0x00000001 (decimal:    1) --> VALID in SEG0: 0x00000001 (decimal:    1)
+  VA  2: 0x00000002 (decimal:    2) --> SEGMENTATION VIOLATION (SEG0)
+  VA  3: 0x00000003 (decimal:    3) --> SEGMENTATION VIOLATION (SEG0)
+  VA  4: 0x00000004 (decimal:    4) --> SEGMENTATION VIOLATION (SEG0)
+  VA  5: 0x00000005 (decimal:    5) --> SEGMENTATION VIOLATION (SEG0)
+  VA  6: 0x00000006 (decimal:    6) --> SEGMENTATION VIOLATION (SEG0)
+  VA  7: 0x00000007 (decimal:    7) --> SEGMENTATION VIOLATION (SEG0)
+  VA  8: 0x00000008 (decimal:    8) --> SEGMENTATION VIOLATION (SEG1)
+  VA  9: 0x00000009 (decimal:    9) --> SEGMENTATION VIOLATION (SEG1)
+  VA 10: 0x0000000a (decimal:   10) --> SEGMENTATION VIOLATION (SEG1)
+  VA 11: 0x0000000b (decimal:   11) --> SEGMENTATION VIOLATION (SEG1)
+  VA 12: 0x0000000c (decimal:   12) --> SEGMENTATION VIOLATION (SEG1)
+  VA 13: 0x0000000d (decimal:   13) --> SEGMENTATION VIOLATION (SEG1)
+  VA 14: 0x0000000e (decimal:   14) --> VALID in SEG1: 0x0000000e (decimal:   14)
+  VA 15: 0x0000000f (decimal:   15) --> VALID in SEG1: 0x0000000f (decimal:   15)
+  
+  
+4. Assume we want to generate a problem where roughly 90% of the
+    randomly-generated virtual addresses are valid (not segmentation
+    violations). How should you configure the simulator to do so?
+    Which parameters are important to getting this outcome?
+    
+    
+    -p  
+    physikalische darf nicht kleiner virtuelem Raum sein (kein einfluss)
+    
+    -a
+    
+./segmentation.py -a 100 -p 1000 --b0 0 --l0 45 --b1 100 --l1 45 -s 17 -n 20 -c
+ARG seed 17
+ARG address space size 100
+ARG phys mem size 1000
+
+Segment register information:
+
+  Segment 0 base  (grows positive) : 0x00000000 (decimal 0)
+  Segment 0 limit                  : 45
+
+  Segment 1 base  (grows negative) : 0x00000064 (decimal 100)
+  Segment 1 limit                  : 45
+
+Virtual Address Trace
+  VA  0: 0x00000034 (decimal:   52) --> SEGMENTATION VIOLATION (SEG1)
+  VA  1: 0x00000050 (decimal:   80) --> VALID in SEG1: 0x00000050 (decimal:   80)
+  VA  2: 0x00000060 (decimal:   96) --> VALID in SEG1: 0x00000060 (decimal:   96)
+  VA  3: 0x0000001c (decimal:   28) --> VALID in SEG0: 0x0000001c (decimal:   28)
+  VA  4: 0x0000004c (decimal:   76) --> VALID in SEG1: 0x0000004c (decimal:   76)
+  VA  5: 0x00000046 (decimal:   70) --> VALID in SEG1: 0x00000046 (decimal:   70)
+  VA  6: 0x00000042 (decimal:   66) --> VALID in SEG1: 0x00000042 (decimal:   66)
+  VA  7: 0x0000000b (decimal:   11) --> VALID in SEG0: 0x0000000b (decimal:   11)
+  VA  8: 0x00000002 (decimal:    2) --> VALID in SEG0: 0x00000002 (decimal:    2)
+  VA  9: 0x00000026 (decimal:   38) --> VALID in SEG0: 0x00000026 (decimal:   38)
+  VA 10: 0x0000004a (decimal:   74) --> VALID in SEG1: 0x0000004a (decimal:   74)
+  VA 11: 0x00000019 (decimal:   25) --> VALID in SEG0: 0x00000019 (decimal:   25)
+  VA 12: 0x00000032 (decimal:   50) --> SEGMENTATION VIOLATION (SEG1)
+  VA 13: 0x0000001f (decimal:   31) --> VALID in SEG0: 0x0000001f (decimal:   31)
+  VA 14: 0x00000054 (decimal:   84) --> VALID in SEG1: 0x00000054 (decimal:   84)
+  VA 15: 0x0000005e (decimal:   94) --> VALID in SEG1: 0x0000005e (decimal:   94)
+  VA 16: 0x00000028 (decimal:   40) --> VALID in SEG0: 0x00000028 (decimal:   40)
+  VA 17: 0x00000063 (decimal:   99) --> VALID in SEG1: 0x00000063 (decimal:   99)
+  VA 18: 0x00000006 (decimal:    6) --> VALID in SEG0: 0x00000006 (decimal:    6)
+  VA 19: 0x00000051 (decimal:   81) --> VALID in SEG1: 0x00000051 (decimal:   81)
+    
+    
+ ./segmentation.py -a 100 -p 1000 --b0 0 --l0 39 --b1 100 --l1 51 -s 17 -n 20 -c
+ARG seed 17
+ARG address space size 100
+ARG phys mem size 1000
+
+            bei Länge 51 funktioniert es nicht !
+            
+            Die Beiden Segmente müssen 90 % des virtuellen Adressraumes abdecken.
+            bsp -a 100  
+            = SEG0      bei 0 bis 45
+            = SEG1      bei 100 bis 55
+
+
+5. Can you run the simulator such that no virtual addresses are valid?
+    How?
+    
+    Sobald die länge null ist                               
+    
+    ./segmentation.py -a 100 -p 1000 --b0 0 --l0 0 --b1 100 --l1 0 -s 17 -n 20 -c
+                                                                        ^                      ^
+   
+   
