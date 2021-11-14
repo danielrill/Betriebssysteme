@@ -1,0 +1,169 @@
+
+ #HW_18.txt
+ 
+    02.10.2021
+    Sebastian Kaeser, Daniel Rill
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 18     " FREE SPACE "
+
+
+
+1. Before doing any translations, let’s use the simulator to study how linear page tables change size given different parameters. Compute the size of linear page tables as different parameters change. Some suggested inputs are below; by using the -v flag, you can see how many page-table entries are filled. First, to understand how linear page table size changes as the address space grows, run with these flags:
+    -P 1k -a 1m -p 512m -v -n 0
+    -P 1k -a 2m -p 512m -v -n 0
+    -P 1k -a 4m -p 512m -v -n 0
+Then, to understand how linear page table size changes as page size grows:
+    -P 1k -a 1m -p 512m -v -n 0
+    -P 2k -a 1m -p 512m -v -n 0
+    -P 4k -a 1m -p 512m -v -n 0
+Before running any of these, try to think about the expected trends. How should page-table size change as the address space grows? As the page size grows? Why not use big pages in general?
+
+
+==> PageSize / AdressSpaceSize == Number of Pages
+==> (1.000.000 / 1.000) => 1024
+==> (2.000.000 / 1.000) => 2048
+==> (4.000.000 / 1.000) ==> 4096
+
+==> PageTableSize / AdressSpaceSize / PageSize ==> Number of Tables
+
+==> (1.000.000 / 1.000) / 1 => 1024
+==> (2.000.000 / 1.000) / 2 => 512
+==> (4.000.000 / 1.000) / 4 ==> 256
+
+==> Big Pages are not efficient because you will have to iterate over ??
+
+
+
+2. Now let’s do some translations. Start with some small examples, and change the number of pages that are allocated to the address space with the -u flag. For example:
+    -P 1k -a 16k -p 32k -v -u 0
+    -P 1k -a 16k -p 32k -v -u 25
+    -P 1k -a 16k -p 32k -v -u 50
+    -P 1k -a 16k -p 32k -v -u 75
+    -P 1k -a 16k -p 32k -v -u 100
+What happens as you increase the percentage of pages that are al- located in each address space?
+
+
+Page Table (from entry 0 down to the max size)
+  [       0]  0x00000000
+  [       1]  0x00000000
+  [       2]  0x00000000
+  [       3]  0x00000000
+  [       4]  0x00000000
+  [       5]  0x00000000
+  [       6]  0x00000000
+  [       7]  0x00000000
+  [       8]  0x00000000
+  [       9]  0x00000000
+  [      10]  0x00000000
+  [      11]  0x00000000
+  [      12]  0x00000000
+  [      13]  0x00000000
+  [      14]  0x00000000
+  [      15]  0x00000000
+
+Virtual Address Trace
+  VA 0x00003a39 (decimal:    14905) -->  Invalid (VPN 14 not valid)
+  VA 0x00003ee5 (decimal:    16101) -->  Invalid (VPN 15 not valid)
+  VA 0x000033da (decimal:    13274) -->  Invalid (VPN 12 not valid)
+  VA 0x000039bd (decimal:    14781) -->  Invalid (VPN 14 not valid)
+  VA 0x000013d9 (decimal:     5081) -->  Invalid (VPN 4 not valid)
+
+  ==> Page Table Valid Bit == 0 ==> All Translations Invalid
+
+  ==> As bigger the percentage (-u), more valid translations !! 
+
+
+  3. Now let’s try some different random seeds,and some different (and sometimes quite crazy) address-space parameters, for variety:
+  -P8 -a32 -p1024-v-s1
+  -P8k-a32k -p1m -v-s2
+  -P 1m -a 256m -p 512m -v -s 3
+  Which of these parameter combinations are unrealistic? Why?
+
+
+  Page Table (from entry 0 down to the max size)
+  [       0]  0x80000079
+  [       1]  0x00000000
+  [       2]  0x00000000
+  [       3]  0x8000005e
+
+Virtual Address Trace
+  VA 0x00000015 (decimal:       21) --> PA or invalid address?
+          10 101 ==> Invalid
+  VA 0x00000009 (decimal:        9) --> PA or invalid address?
+          01 001 ==> Invalid
+  VA 0x00000013 (decimal:       19) --> PA or invalid address?
+          10 011 ==> Invalid
+  VA 0x00000013 (decimal:       19) --> PA or invalid address?
+          10 011 ==> Invalid
+  VA 0x00000012 (decimal:       18) --> PA or invalid address?
+          10 010 ==> Invalid
+For each virtual address, write down the physical address it translates to
+OR write down that it is an out-of-bounds address (e.g., segfault).
+
+
+
+
+
+ARG seed 3
+ARG address space size 32
+ARG phys mem size 1024
+ARG page size 8
+ARG verbose True
+ARG addresses -1
+
+Page Table (from entry 0 down to the max size)
+  [       0]  0x00000000
+  [       1]  0x8000002f
+  [       2]  0x80000050
+  [       3]  0x00000000
+
+Virtual Address Trace
+  VA 0x00000000 (decimal:        0) --> PA or invalid address?
+           00 000 ==> Invalid
+  VA 0x0000001a (decimal:       26) --> PA or invalid address?
+           11 010 ==> Invalid Page 3
+  VA 0x00000008 (decimal:        8) --> PA or invalid address?
+           01 000 ==> Valid Page1 ==> Addr: 0x2f * 8 ==> 0x178 (dec:276) Warum x8 ?
+  VA 0x00000007 (decimal:        7) --> PA or invalid address?
+           00 111  ==> Invalid Page0
+  VA 0x0000001f (decimal:       31) --> PA or invalid address?
+           11 111 ==> Invalid Page3
+For each virtual address, write down the physical address it translates to
+OR write down that it is an out-of-bounds address (e.g., segfault).
+
+
+
+?? Wie stoßen wir auf die Anzahl der Bits im Offset
+
+
+
+
+Virtual Address Trace
+  VA 0x030 8b24d (decimal: 50901581) --> 1f68b24d (decimal 526955085) [VPN 48]
+      00110000 | 1000 1011 0010 0100 1101 
+      Page48 : 0x800001f6 
+  VA 0x042351e6 (decimal: 69423590) -->  Invalid (VPN 66 not valid)
+  VA 0x02feb67b (decimal: 50247291) --> 0a9eb67b (decimal 178173563) [VPN 47]
+  VA 0x0b46977d (decimal: 189175677) -->  Invalid (VPN 180 not valid)
+  VA 0x0dbcceb4 (decimal: 230477492) --> 1f2cceb4 (decimal 523030196) [VPN 219]
+
+
+
+4. Use the program to try out some other problems. Can you find the limits of where the program doesn’t work anymore? For example, what happens if the address-space size is bigger than physical mem- ory?
+
+If adressSpace is smaller than the physicalMemory then 
+=> Error: physical memory size must be GREATER than address space size (for this simulation)
+
+If the pageSize is greater than the adressSpaceSize or physicalSpace Size then it wont work
+
+The PageSize, AdressSpaceSize and the PhysicalSize must be power of two.
+
+
+
+
+
+
+
+
+
