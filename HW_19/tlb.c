@@ -28,6 +28,16 @@ void help(){
 
 }
 
+int skip_entries(int page_sz, int data_type) {
+
+    int data_sz = sizeof(data_type);
+    int entries = page_sz / data_sz;
+    //int number_pages = page_sz / entries;
+
+    return entries;
+}
+
+
 
 //---------------------------------------------MAIN-----------------------
 int main(int argc, char** argv){
@@ -42,8 +52,8 @@ int main(int argc, char** argv){
         setpriority(PRIO_PROCESS, 0, -20);     
         nice(-20);                           
 
-        uint32_t numPages;
-        uint32_t numTrials;
+        long numPages;
+        long numTrials;
         long pagesize = sysconf(_SC_PAGESIZE);
 	struct timespec start_time,end_time;	
         int optval;
@@ -68,45 +78,68 @@ int main(int argc, char** argv){
 	}
 
         printf("Folgende Parameter wurden gewählt\n");
-        printf("NumTrials="  "%" PRId32 "\n",numTrials);
-        printf("NumPages="  "%" PRId32 "\n",numPages);
+        printf("NumTrials= %lu\n",numTrials);
+        printf("NumPages= %lu\n",numPages);
+        
+        
+        printf("skip_entries = %d \n", skip_entries(pagesize, sizeof(int)));
 
-        int *arr = (int*)malloc((size_t) numPages * (size_t)pagesize);
+        long *arr = (long*)calloc( numPages * pagesize, sizeof(long));
         if(arr == NULL){
                 fprintf(stderr,"Fehler bei Speicherreservierung!\n");
                 return 1;
         }
-        int jump = pagesize / sizeof(uint32_t); 
-        if(clock_gettime(CLOCK_MONOTONIC_RAW,&start_time) < 0){
-                fprintf(stderr,"Erste Zeitmessung fehlgeschlagen!\n");
-                return 2;
-        }
         
-        for(uint32_t j=0; j < numTrials; j++){
-                for(uint32_t i=0; i < numPages * jump; i+= jump){
+        long *timevalues = (long*)calloc(numPages * numPages, sizeof(long));
+                if(timevalues == NULL){
+                fprintf(stderr,"Fehler bei Speicherreservierung!\n");
+                return 1;
+        }
+        long jump = pagesize / sizeof(int);
+
+        if(clock_gettime(CLOCK_MONOTONIC_RAW,&start_time) < 0){
+            fprintf(stderr,"Erste Zeitmessung fehlgeschlagen!\n");
+               return 2;
+     }
+        long counter = 0;
+        /*char* data = strcat("data",".csv");
+        FILE *fp;
+        fp = fopen(data,"w+");
+        */
+        for(long j=0; j < numTrials; j++){
+                for(long i=0; i < numPages * jump; i+= jump){
+                
+                        if(clock_gettime(CLOCK_MONOTONIC_RAW,&start_time) < 0){
+                            fprintf(stderr,"Erste Zeitmessung fehlgeschlagen!\n");
+                                   return 2;
+                            }
                         arr[i] += 1;
+                            
+                             if(clock_gettime(CLOCK_MONOTONIC_RAW,&end_time) < 0){
+                            fprintf(stderr,"Zweite Zeitmessung fehlgeschlagen!\n");
+                                return 2;
+                            }   
+                        counter++;
+                        
+                       timevalues[i] = end_time.tv_nsec - start_time.tv_nsec;
+                        printf("%lu ; ", timevalues[i]);
+                        
+
                 }
         }
-        
-        if(clock_gettime(CLOCK_MONOTONIC_RAW,&end_time) < 0){
-                fprintf(stderr,"Zweite Zeitmessung fehlgeschlagen!\n");
-                return 2;
-        }
-
-
+        /*
         end_time.tv_sec -= start_time.tv_sec;
         end_time.tv_nsec -= start_time.tv_nsec;
+*/
 
+
+        printf("\nProgrammauswertung: \n");
+        printf("[NumPages = %lu ]\n",numPages);
+        printf("[NumTrials = %lu ]\n",numTrials);
+       // printf("[Nanosekunden: %lu ]\n",end_time.tv_nsec/numTrials/jump);
         
-
-        printf("\nProgrammauswerung: \n");
-        printf("[NumPages = " "%" PRId32 "]\n",numPages);
-        printf("[NumTrials = "  "%" PRId32 "]\n",numTrials);
-        printf("[Nanosekunden: %lu]\n",end_time.tv_nsec/numTrials/jump);
+        free(arr);
+        //fclose(fp);
         
         return 1;
 }
-
-
-
-
