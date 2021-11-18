@@ -1,0 +1,125 @@
+
+
+ #HW_21.txt
+ 
+    18.10.2021
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 21    " BEYOND PHYSICAL MEMORY: MECHANISMS "
+
+1. First, open two separate terminal connections to the same machine, so that
+    you can easily run something in one window and the other.
+    
+    Now, in one window, run vmstat 1, which shows statistics about machine
+    usage every second. Read the man page, the associated README, and any
+    other information you need so that you can understand its output.
+    Leave this window running vmstat for the rest of the exercises below.
+    
+    Now, we will run the program mem.c but with very little memory usage.
+    This can be accomplished by typing ./mem 1 (which uses only 1 MB of
+    memory). 
+    
+    How do the CPU usage statistics change when running mem? Do
+    the numbers in the user time column make sense? How does this change
+    when running more than one instance of mem at once?
+    
+
+    
+
+ 2  0  31936 367324  69948 1067076    0    0     0     0  820 1777          1  3 96  0  0
+ start of mem1
+ 1  0  31936 367064  69948 1067076    0    0     0     0  941 1919          12  4 84  0  0
+
+2nd mem
+
+ 9  0  31936 358220  69980 1070976    0    0     0    24  123 1079          21  7 72  0  0
+                      ^             ^                                                                           ^
+         Freie Speicher verringert                                                      USER TIME ist höher
+                            BUFF und Cache haben sich erhöht
+Beim zweiten Aufruf hat sich die USER_TIME verdoppelt                                                                                                               
+
+
+2. Let’s now start looking at some of the memory statistics while running mem.
+    We’ll focus on two columns: swpd (the amount of virtual memory used) and
+    free (the amount of idle memory). Run ./mem 1024 (which allocates 1024
+    MB) and watch how these values change. Then kill the running program
+    (by typing control-c) and watch again how the values change. What do you
+    notice about the values? In particular, how does the free column change
+    when the program exits? Does the amount of free memory increase by the
+    expected amount when mem exits?
+    
+    
+swpd: the amount of virtual memory used.  -> OS can read from and write to the swap space, in page-sized units.
+                                                                            OS will need to remember the disk address of a given page
+free: the amount of idle memory.
+
+        swpd    | free
+
+ 0  0  27584 412616  70692 1066572    
+ 2  0  27584 412616  70692 1066572    
+ 4  0  27584 412112  70692 1066572    START
+ 
+ 8  0  27584 412104  70692 1066572    
+ 6  0  27584 412104  70692 1066572    
+ 6  0  27584 412104  70692 1066572   
+ 8  0  27584 412104  70692 1066572    
+12  0  27584 412104  70700 1066564    
+27  0  27584 412104  70700 1066572    KILL
+
+ 0  0  27584 412096  70700 1066572    
+ 0  0  27584 412096  70700 1066572   
+
+ 
+ The Free column decreased, after we started ./mem and also decreased when we killed ./mem  !
+ 
+ 
+ 
+3. We’ll next look at the swap columns (si and so), which indicate how much
+    swapping is taking place to and from the disk. Of course, to activate these,
+    you’ll need to run mem with large amounts of memory. First, examine how
+    much free memory is on your Linux system (for example, by typing cat
+    /proc/meminfo; type man proc for details on the /proc file system and
+    the types of information you can find there). One of the first entries in
+    /proc/meminfo is the total amount of memory in your system. Let’s as-
+    sume it’s something like 8 GB of memory; if so, start by running mem 4000
+    (about 4 GB) and watching the swap in/out columns. Do they ever give
+    non-zero values? Then, try with 5000, 6000, etc. What happens to these
+    values as the program enters the second loop (and beyond), as compared to
+    the first loop? How much data (total) are swapped in and out during the
+    second, third, and subsequent loops? (do the numbers make sense?)
+    
+/proc/meminfo                                       /mem 1000                                           /mem 1200
+
+MemTotal:           3129044 kB              
+
+MemFree:            150692 kB               MemFree:            118676 kB                   MemFree:           80104 kB
+MemAvailable:    1460552 kB         MemAvailable:         448964 kB                 MemAvailable:      75244 kB
+Buffers:                79796 kB                Buffers:                35236 kB                        Buffers:            3124 kB
+Cached:                1434168 kB           Cached:                 511140 kB                   Cached:           211716 kB
+    ---> SwapCached:            0 kB                 SwapCached:          3668 kB                       SwapCached:        38372 kB
+
+ ------CPU-----
+ US     SYS     ID
+ 4        54        38 
+ 8        32        55 
+19       18        63 
+12       14        74 
+45       17        36 
+48       7          45  
+49       4          47 
+46       6          49 
+45      17         37 
+
+
+
+5. Now let’s examine performance. Pick an input for mem that comfortably
+    fits in memory (say 4000 if the amount of memory on the system is 8 GB).
+    How long does loop 0 take (and subsequent loops 1, 2, etc.)? Now pick a size
+    comfortably beyond the size of memory (say 12000 again assuming 8 GB of
+    memory). How long do the loops take here? How do the bandwidth num-
+    bers compare? How different is performance when constantly swapping
+    versus fitting everything comfortably in memory? Can you make a graph,
+    with the size of memory used by mem on the x-axis, and the bandwidth of
+    accessing said memory on the y-axis? Finally, how does the performance of
+    the first loop compare to that of subsequent loops, for both the case where
+    everything fits in memory and where it doesn’t?
