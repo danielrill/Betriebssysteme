@@ -1,0 +1,170 @@
+ #HW_26.txt
+ 
+    04.12.2021
+    Sebastian Kaeser, Daniel Rill
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 26     " Threads -Intro "
+    
+
+1. First build main-race.c. Examine the code so you can see the (hopefully
+obvious) data race in the code. Now run helgrind (by typing valgrind
+--tool=helgrind main-race) to see how it reports the race. Does it
+point to the right lines of code? What other information does it give to you?
+
+
+==4066== This conflicts with a previous write of size 4 by thread #2
+==4066== Locks held: none
+==4066==    at 0x1091BE: worker (main-race.c:8)
+==4066==    by 0x4843B1A: ??? (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_helgrind-amd64-linux.so)
+==4066==    by 0x486E58F: start_thread (pthread_create.c:463)
+==4066==    by 0x49A0222: clone (clone.S:95)
+==4066==  Address 0x10c014 is 0 bytes inside data symbol "balance"
+==4066== 
+==4066== ----------------------------------------------------------------
+==4066== 
+==4066== Possible data race during write of size 4 at 0x10C014 by thread #1
+==4066== Locks held: none
+==4066==    at 0x109236: main (main-race.c:15)
+==4066== 
+==4066== This conflicts with a previous write of size 4 by thread #2
+==4066== Locks held: none
+==4066==    at 0x1091BE: worker (main-race.c:8)
+==4066==    by 0x4843B1A: ??? (in /usr/lib/x86_64-linux-gnu/valgrind/vgpreload_helgrind-amd64-linux.so)
+==4066==    by 0x486E58F: start_thread (pthread_create.c:463)
+==4066==    by 0x49A0222: clone (clone.S:95)
+
+
+???
+==4066==  Address 0x10c014 is 0 bytes inside data symbol "balance"
+???                                                 ^
+
+it spots the datarace location very precisely,
+
+but why : Address 0x10c014 is 0 bytes inside data symbol "balance"
+
+when we init it with int balance = 0   (4 bytes) 
+
+##################################################
+
+2. What happens when you remove one of the offending lines of code? Now
+add a lock around one of the updates to the shared variable, and then around
+both. What does helgrind report in each of these cases?
+
+if we comment the worker
+void* worker(void* arg) {
+    //balance++; // unprotected access 
+    return NULL;
+}
+
+
+no problems
+
+and if we comment the main,
+also no problems spotted by helgrind:
+
+==4113== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+
+
+if we lock/unlock both balance updates (main/worker)  it runs as it should,
+but we still have 7 suppressed warnings/errors
+
+==4158== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 7 from 7)
+
+what does he suppress ?
+
+
+
+if we lock only 1 of the critical sections we get the same result as using no locks
+
+--> Possible data race during write of size 4 at 0x10C014 by thread #1
+
+##################################################
+
+3. Now let’s look at main-deadlock.c. Examine the code. This code has a
+problem known as deadlock (which we discuss in much more depth in a
+forthcoming chapter). Can you see what problem it might have?
+
+
+both threads lock each other,
+
+one thread locks up and the other locks immediatly after the first,
+without the first thread beeing able to unlock 
+
+==4289==    by 0x109269: worker (main-deadlock.c:13)        t2 locks m2
+
+==4289==    by 0x109298: worker (main-deadlock.c:14)        t2 locks m1
+
+==4289==    by 0x10920B: worker (main-deadlock.c:10)        t1 locks m1
+
+==4289==    by 0x10923A: worker (main-deadlock.c:11)        t1 locks m2
+
+Address 0x10c040 is 0 bytes inside data symbol "m1"
+                                    ^
+whats that for ?
+
+##################################################
+
+
+4. Now run helgrind on this code. What does helgrind report?
+ see upper
+
+##################################################
+
+
+5. Now run helgrind on main-deadlock-global.c. Examine the code;
+does it have the same problem that main-deadlock.c has? Should helgrind
+be reporting the same error? What does this tell you about tools like helgrind?
+
+
+the lock order is violated again.
+
+it reports the same error,  even though we locked everything with g
+not perfect tool but it does a good job overall
+##################################################
+
+
+6. Let’s next look at main-signal.c. This code uses a variable (done) to
+signal that the child is done and that the parent can now continue. Why is
+this code inefficient? (what does the parent end up spending its time doing,
+particularly if the child thread takes a long time to complete?)
+
+Here we have a spinlock example which could potentially waste infinite amounts 
+of CPU-Cycles (our Holy Grail)
+
+very unefficient !
+
+but still useful if the lock is aquired for a very very short amount of time 
+
+##################################################
+
+
+7. Now run helgrind on this program. What does it report? Is the code
+correct?
+
+possible data race at done , detects no lock (which technically is true)
+helgrind could potentionally find where, but not essentially what the problem is
+
+here a potential infinite loop
+
+##################################################
+
+
+8. Now look at a slightly modified version of the code, which is found in
+main-signal-cv.c. This version uses a condition variable to do the sig-
+naling (and associated lock). Why is this code preferred to the previous
+version? Is it correctness, or performance, or both?
+
+it should ensure correctness, 
+performance aswell because we wont get stuck in an infinite loop
+
+
+adding a second thread with the same routine (lock unlock --> synchronizer)
+will result in expceted behaviour... no data race
+
+##################################################
+
+
+9. Once again run helgrind on main-signal-cv. Does it report any errors?
+
+no ERRORS 
