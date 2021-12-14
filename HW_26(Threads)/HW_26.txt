@@ -1,0 +1,140 @@
+ #HW_26.txt
+ 
+    04.12.2021
+    Sebastian Kaeser, Daniel Rill
+    BSYS    (AIN3)
+    
+    OSTEP CHAPTER 26     " Threads -Intro "
+    
+##################################################
+
+1. Let’s examine a simple program, “loop.s”. First, just read and un-
+derstand it. Then, run it with these arguments (./x86.py -p loop.s
+-t 1 -i 100 -R dx) This specifies a single thread, an interrupt
+every 100 instructions, and tracing of register %dx. What will %dx
+be during the run? Use the -c flag to check your answers; the an-
+swers, on the left, show the value of the register (or memory value)
+after the instruction on the right has run.
+
+start 0
+sub 1, $dx
+
+
+##################################################
+
+2. Same code, different flags: (./x86.py -p loop.s -t 2 -i 100
+-a
+dx=3,dx=3 -R dx) This specifies two threads, and initializes each
+%dx to 3. What values will %dx see? Run with -c to check. Does
+the presence of multiple threads affect your calculations? Is there a
+race in this code?
+
+start t1, t2  dx = 3
+
+dx = -1
+
+counts downwards (both) until -1 is reached
+
+test flag checks the value.
+
+##################################################
+
+3. Run this: ./x86.py -p loop.s -t 2 -i 3 -r -a dx=3,dx=3
+-R dx This makes the interrupt interval small/random; use dif-
+ferent seeds (-s) to see different interleavings. Does the interrupt
+frequency change anything?
+
+the interupt does not change anything in terms of the value, 
+but still interrupts the sequence
+
+##################################################
+
+4. Now, a different program, looping-race-nolock.s, which ac-
+cesses a shared variable located at address 2000; we’ll call this vari-
+able value. Run it with a single thread to confirm your under-
+standing: ./x86.py -p
+looping-race-nolock.s -t 1 -M 2000 What is value (i.e.,
+at memory address 2000) throughout the run? Use -c to check.
+
+ax will be be incremented and saved to address 2000
+
+bx is like a counter with counts down (sub 1) 
+starts with 0
+
+##################################################
+
+5. Run with multiple iterations/threads: ./x86.py -p
+looping-race-nolock.s -t 2 -a bx=3 -M 2000 Why does
+each thread loop three times? What is final value of value?
+
+the bx register now 3, will ensure that we run the sequence 3 times in a thread
+
+thus ax will be 3 at the end of t1, and 6 at the end of t2
+
+##################################################
+
+6. Run with random interrupt intervals: ./x86.py -p
+looping-race-nolock.s -t 2 -M 2000 -i 4 -r -s 0 with
+different seeds (-s 1, -s 2, etc.) Can you tell by looking at the
+thread interleaving what the final value of value will be? Does the
+timing of the interrupt matter? Where can it safely occur? Where
+not? In other words, where is the critical section exactly?
+
+ax will be be incremented if the the register has been updated after the add
+if it interrupts immediatly after the add, the register will not be updated
+and stays the same value 
+
+##################################################
+
+7. Now examine fixed interrupt intervals: ./x86.py -p
+looping-race-nolock.s -a bx=1 -t 2 -M 2000 -i 1 What
+will the final value of the shared variable value be? What about
+when you change -i 2, -i 3, etc.? For which interrupt intervals
+does the program give the “correct” answer?
+
+if the interrupts are increased, we are in danger to load the not updated value
+eg. i = 1   value stays 1 ! (register is not updated/saved)
+
+
+##################################################
+
+8. Run the same for more loops (e.g., set -a bx=100). What inter-
+rupt intervals (-i) lead to a correct outcome? Which intervals are
+surprising?
+
+if we have i = 1  , each thread runs atlest 1 time on each number
+eg counter 1 will be run at t1, t0
+
+if we have i= 3, each thread has time to update the register thus incrementing each
+2nd value  t0 1  , t1 2 , t0 3, t1 4 .. (tandem)
+
+##################################################
+
+9. One last program: wait-for-me.s. Run: ./x86.py -p
+wait-for-me.s -a ax=1,ax=0 -R ax -M 2000 This sets the
+%ax register to 1 for thread 0, and 0 for thread 1, and watches %ax
+and memory location 2000. How should the code behave? How is
+the value at location 2000 being used by the threads? What will its
+final value be?
+
+t0 increments the 2000
+t1 reads from the 2000 and stores it in cx
+
+
+
+##################################################
+
+10. Now switch the inputs: ./x86.py -p wait-for-me.s -a
+ax=0,ax=1 -R ax -M 2000 How do the threads behave? What
+is thread 0 doing? How would changing the interrupt interval (e.g.,
+-i 1000, or perhaps to use random intervals) change the trace out-
+come? Is the program efficiently using the CPU?
+
+
+2000 stays at 0  in t0
+
+until t1 increments it at the end of the trace resulting in 2000 value = 1
+
+
+with i-1000     t0 doesnt stop automaticly (is interrupted) thus the interrupt frequency
+                       accounts for when the threads will be switched (t0 does not end itself)
