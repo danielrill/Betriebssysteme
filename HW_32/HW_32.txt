@@ -1,0 +1,218 @@
+
+#########################################################
+1. First let’s make sure you understand how the programs generally work, and
+some of the key options. Study the code in vector-deadlock.c, as well
+as in main-common.c and related files.
+Now, run ./vector-deadlock -n 2 -l 1 -v, which instantiates two
+threads (-n 2), each of which does one vector add (-l 1), and does so in
+verbose mode (-v). Make sure you understand the output. How does the
+output change from run to run?
+
+
+Only the Thread order changes in some rare occasions
+
+        // First Run
+
+ T0                 T1
+ ______________________________
+                    ->add(0, 1)
+                    <-add(0, 1)
+->add(0, 1)
+<-add(0, 1)
+_______________________________
+
+        // Second Run
+->add(0, 1)
+<-add(0, 1)
+                     ->add(0, 1)
+                     <-add(0, 1)
+________________________________
+#########################################################
+
+2. Now add the -d flag, and change the number of loops (-l) from 1 to higher
+numbers. What happens? Does the code (always) deadlock?
+
+#########################################################
+3. How does changing the number of threads (-n) change the outcome of the
+program? Are there any values of -n that ensure no deadlock occurs?
+
+If n is 1 (1 thread) no deadlock can ever occur
+
+
+#########################################################
+4. Now examine the code in vector-global-order.c. First, make sure you
+understand what the code is trying to do; do you understand why the code
+avoids deadlock? Also, why is there a special case in this vector add()
+routine when the source and destination vectors are the same?
+
+With Print ( -v)
+
+-> 100.000 loops    2 threads
+        Time: 4.54 seconds
+        
+-> 100.000 loops    3 threads        
+        Time: 7.95 seconds
+        
+-> 100.000 loops    4 threads
+        Time: 9.92 seconds
+        
+-> 100.000 loops    6 threads        
+        Time: 17.39 seconds
+        
+-> 100.000 loops    8 threads 
+        Time: 25.75 seconds
+        
+-> 100.000 loops    10 threads         
+        Time: 35.26 seconds
+
+-> 100.000 loops    12 threads 
+        Time: 48.67 seconds
+
+Non (-v)
+
+-n 2 -l 100000 -d               l 200.000                           -l 400.000
+Time: 0.04 seconds          Time: 0.10 seconds          Time: 0.14 seconds
+
+-n 3 -l 100000 -d 
+Time: 0.08 seconds          Time: 0.11 seconds          Time: 0.30 seconds
+
+
+ -n 4 -l 100000 -d 
+Time: 0.08 seconds          Time: 0.18 seconds          Time: 0.30 seconds
+
+-n 6 -l 100000 -d 
+Time: 0.10 seconds          Time: 0.18 seconds          Time: 0.36 seconds
+
+-n 8 -l 100000 -d 
+Time: 0.13 seconds          Time: 0.26 seconds          Time: 0.44 seconds
+
+-n 10 -l 100000 -d 
+Time: 0.14 seconds          Time: 0.31 seconds          Time: 0.52 seconds
+
+-n 12 -l 100000 -d 
+Time: 0.19 seconds          Time: 0.35 seconds          Time: 0.63 seconds
+
+
+-> Loops have a bigger impact on the runtime as increasing the number of threads
+
+
+#########################################################
+What happens if you turn on the parallelism flag (-p)? How much would
+you expect performance to change when each thread is working on adding
+different vectors (which is what -p enables) versus working on the same
+ones?
+-n 2 -l 100000 -d -p            -l 200000                               l 400.000
+Time: 0.03 seconds          Time: 0.04 seconds              Time: 0.08 seconds
+
+ -n 3 -l 100000 -d -p
+Time: 0.03 seconds          Time: 0.05 seconds              Time: 0.11 seconds
+
+-n 4 -l 100000 -d -p
+Time: 0.03 seconds          Time: 0.06 seconds              Time: 0.15 seconds
+
+-n 6 -l 100000 -d -p
+Time: 0.07 seconds          Time: 0.10 seconds              Time: 0.14 seconds
+
+-n 8 -l 100000 -d -p
+Time: 0.06 seconds          Time: 0.13 seconds              Time: 0.23 seconds
+
+-n 10 -l 100000 -d -p
+Time: 0.07 seconds          Time: 0.14 seconds              Time: 0.26 seconds
+
+-n 12 -l 100000 -d -p
+Time: 0.08 seconds          Time: 0.17 seconds              Time: 0.33 seconds
+
+n 14 -l 100000 -d -p
+Time: 0.10 seconds          Time: 0.20 seconds              Time: 0.40 seconds
+
+
+#########################################################
+7. Now let’s study vector-try-wait.c. First make sure you understand
+the code. Is the first call to pthread mutex trylock() really needed?
+Now run the code. How fast does it run compared to the global order ap-
+proach? How does the number of retries, as counted by the code, change as
+the number of threads increases?
+
+
+-n 2 -l 100000 -d 
+Retries: 1411414
+Time: 0.36 seconds
+
+-n 3 -l 100000 -d
+Retries: 425306
+Time: 0.17 seconds
+
+-n 4 -l 100000 -d
+Retries: 281913
+Time: 0.22 seconds
+______________________
+-n 2 -l 100000 -d -p
+Retries: 0
+Time: 0.02 seconds
+
+-n 3 -l 100000 -d -p
+Retries: 0
+Time: 0.02 seconds
+
+-n 4 -l 100000 -d -p
+Retries: 0
+Time: 0.03 seconds
+
+
+-> we have a high risk for a livelock to occur 
+( threads trying to take a lock repeatedly without success)
+
+
+#########################################################
+8. Now let’s look at vector-avoid-hold-and-wait.c. What is the main
+problem with this approach? How does its performance compare to the
+other versions, when running both with -p and without it?
+
+Assumption:
+With the global lock aquisition we will ensure the correct lock order,
+which could increase the overhead a little bit, but overall confidentiality will be sure
+
+
+-> Running a few times shows the overhead is increased a little.
+
+#########################################################
+9. Finally, let’s look at vector-nolock.c. This version doesn’t use locks at
+all; does it provide the exact same semantics as the other versions? Why or
+why not?
+
+Assumption:
+Powerful assembler instructions could increase the overhead and also ensure correctnes (given they are done "atomicly")
+
+the fetch-and-add CPU instruction (FAA) atomically increments the contents of a memory location by a specified value.
+
+no other process will ever see an intermediate result.
+
+Fetch-and-add can be used to implement concurrency control structures such as mutex locks and semaphores. 
+
+
+-> Runnng it a few times, the results show a rather significant increase in runtime.
+    which probably account to the more complex nature of the fetch and add instruction itself. compared to other assembler instructions
+    
+<< atomic >>
+function FetchAndAdd(address location, int inc) {
+    int value := *location
+    *location := value + inc
+    return value
+}
+
+
+#########################################################
+10. Now compare its performance to the other versions, both when threads are
+working on the same two vectors (no -p) and when each thread is working
+on separate vectors (-p). How does this no-lock version perform?
+
+
+working on the same two vectors shows a significant higher timing as with working on sepererate vectors.
+
+-n 10 -l 100000 -d -t
+Time: 1.34 seconds
+
+-n 10 -l 100000 -d -t -p
+Time: 0.37 seconds
+
+All in all the no-lock version performes worse compared to all the other versions
