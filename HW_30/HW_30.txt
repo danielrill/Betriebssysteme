@@ -1,0 +1,130 @@
+2. Run with one producer and one consumer, and have the producer produce a few values. Start with a buffer (size 1), and then increase it. How does the behavior of the code change with larger buffers? (or does it?) What would you predict num full to be with different buffer sizes (e.g., -m 10) and different numbers of produced items (e.g., -l 100), when you change the consumer sleep string from default (no sleep) to -C 0,0,0,0,0,0,1?
+
+
+--> Bei größerer Buffersize schreibt der Producer mehr Werte bevor er schlafen geht, was dazu führt dass die Consumer ebenfalls mehrere Werte verarbeiten bevor sie schlafen gehen. Context Switch Zeit wird verkürzt.
+
+
+
+
+4. Let’s look at some timings. How long do you think the follow- ing execution, with one producer, three consumers, a single-entry shared buffer, and each consumer pausing at point c3 for a sec- ond, will take? ./main-two-cvs-while -p 1 -c 3 -m 1 -C 0,0,0,1,0,0,0:0,0,0,1,0,0,0:0,0,0,1,0,0,0 -l 10 -v -t
+
+
+--> Da wir mit -l 10 Items erstellt haben, brauchen wir mindestens 10 Sekunden, da sie vom Consumer verarbeitet werden müssen.
+--> Das Ergebnis ist nicht deterministisch. 
+--> Wenn wir bei cond_wait angelangt sind schläft der Consumer eine Sekunde.
+--> TotalTime = 12 || 13 Sekunden was wahrscheinlich am EndOfStream Marker.
+
+
+
+5. Let’s look at some timings. How long do you think the follow- ing execution, with one producer, three consumers, a single-entry shared buffer, and each consumer pausing at point c3 for a sec- ond, will take? ./main-two-cvs-while -p 1 -c 3 -m 1 -C 0,0,0,1,0,0,0:0,0,0,1,0,0,0:0,0,0,1,0,0,0 -l 10 -v -t
+
+-m = 3
+
+  1 [u  9 f---  --- ] p6
+  1 [u  9 f---  --- ]          c1
+  0 [ --- *---  --- ]          c4
+  0 [ --- *---  --- ]          c5
+  1 [ --- uEOS f--- ] [main: added end-of-stream marker]
+  2 [f--- uEOS  EOS ] [main: added end-of-stream marker]
+  2 [fEOS *EOS  EOS ]          c6
+  3 [ EOS *EOS  EOS ] [main: added end-of-stream marker]
+  3 [ EOS *EOS  EOS ]       c3
+  3 [ EOS *EOS  EOS ]          c0
+  2 [ EOS f--- uEOS ]       c4
+  2 [ EOS f--- uEOS ]       c5
+  2 [ EOS f--- uEOS ]       c6
+  2 [ EOS f--- uEOS ]    c3
+  1 [uEOS f---  --- ]    c4
+  1 [uEOS f---  --- ]    c5
+  1 [uEOS f---  --- ]    c6
+  1 [uEOS f---  --- ]          c1
+  0 [ --- *---  --- ]          c4
+  0 [ --- *---  --- ]          c5
+  0 [ --- *---  --- ]          c6
+
+Consumer consumption:
+  C0 -> 1
+  C1 -> 0
+  C2 -> 9
+
+Total time: 10.01 seconds
+
+-m = 1
+
+  0 [*--- ]          c4
+  0 [*--- ]          c5
+  0 [*--- ]       c3
+  0 [*--- ]          c6
+  0 [*--- ]          c0
+  0 [*--- ]       c2
+  1 [*EOS ] [main: added end-of-stream marker]
+  1 [*EOS ]          c1
+  0 [*--- ]          c4
+  0 [*--- ]          c5
+  0 [*--- ]          c6
+  0 [*--- ]    c3
+  0 [*--- ]    c2
+  1 [*EOS ] [main: added end-of-stream marker]
+  1 [*EOS ]       c3
+  0 [*--- ]       c4
+  0 [*--- ]       c5
+  0 [*--- ]       c6
+  1 [*EOS ] [main: added end-of-stream marker]
+  1 [*EOS ]    c3
+  0 [*--- ]    c4
+  0 [*--- ]    c5
+  0 [*--- ]    c6
+
+Consumer consumption:
+  C0 -> 1
+  C1 -> 0
+  C2 -> 9
+
+Total time: 12.01 seconds
+
+
+--> c3 wird selterner aufgerufen, daher wird weniger geschlafen daher ist die Zeit bei -m = 3 kürzer
+
+
+
+6. Now change the location of the sleep to c6 (this models a con- sumer taking something off the queue and then doing something with it), again using a single-entry buffer. What time do you pre- dict in this case? ./main-two-cvs-while -p 1 -c 3 -m 1 -C 0,0,0,0,0,0,1:0,0,0,0,0,0,1:0,0,0,0,0,0,1 -l 10 -v -t
+
+  1 [*  9 ]    c0
+  1 [*  9 ]    c1
+  0 [*--- ]    c4
+  0 [*--- ]    c5
+  0 [*--- ]    c6
+  1 [*EOS ] [main: added end-of-stream marker]
+  1 [*EOS ]       c0
+  1 [*EOS ]       c1
+  0 [*--- ]       c4
+  0 [*--- ]       c5
+  0 [*--- ]       c6
+  1 [*EOS ] [main: added end-of-stream marker]
+  1 [*EOS ]          c0
+  1 [*EOS ]          c1
+  0 [*--- ]          c4
+  0 [*--- ]          c5
+  0 [*--- ]          c6
+  1 [*EOS ] [main: added end-of-stream marker]
+  1 [*EOS ]    c0
+  1 [*EOS ]    c1
+  0 [*--- ]    c4
+  0 [*--- ]    c5
+  0 [*--- ]    c6
+
+Consumer consumption:
+  C0 -> 4
+  C1 -> 3
+  C2 -> 3
+
+Total time: 5.00 seconds
+
+
+-->  
+
+
+
+
+
+
