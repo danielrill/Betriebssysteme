@@ -1,0 +1,222 @@
+1. Use the simulator to perform some basic RAID mapping tests. Run with
+different levels (0, 1, 4, 5) and see if you can figure out the mappings of a
+set of requests. For RAID-5, see if you can figure out the difference between
+left-symmetric and left-asymmetric layouts. Use some different random seeds to
+generate different problems than above.
+
+==> RAID0 Formula : disk   = address % number_of_disks
+                    offset = address / number_of_disks
+==> left symmetric: 
+
+--------------------------
+0    |1    |2   |3    |p0
+--------------------------
+5    |6    |7   |p1   | 4 
+--------------------------
+10   |11   |p2  | 8   | 9
+--------------------------
+15   |p3   |12  |13   | 14 
+--------------------------
+p4   |16   |17  | 18  | 19
+--------------------------
+
+6183 1
+LOGICAL READ from addr:6183 size:4096
+  read  [disk 3, offset 2061]
+9097 1
+LOGICAL READ from addr:9097 size:4096
+  read  [disk 1, offset 3032]
+8102 1
+LOGICAL READ from addr:8102 size:4096
+  read  [disk 2, offset 2700]
+
+
+==> left asymmetric: 
+
+--------------------------
+0    |1    |2   |3    |p0
+--------------------------
+4    |5    |6   |p1   | 7 
+--------------------------
+8    |9    |p2  |10   | 11
+--------------------------
+12   |p3   |13  |14   | 15 
+--------------------------
+p4   |16   |17  | 18  | 19
+--------------------------
+
+LOGICAL READ from addr:2818 size:4096
+  read  [disk 2, offset 939]
+6183 1
+LOGICAL READ from addr:6183 size:4096
+  read  [disk 0, offset 2061]
+9097 1
+LOGICAL READ from addr:9097 size:4096
+  read  [disk 1, offset 3032]
+8102 1
+LOGICAL READ from addr:8102 size:4096
+  read  [disk 2, offset 2700]
+
+
+
+2. Do the same as the first problem, but this time vary the chunk size with -C.
+   How does chunk size change the mappings?
+
+==> Chunk size of 4k
+
+2818 1
+LOGICAL READ from addr:2818 size:4096
+  read  [disk 1, offset 938]  
+6183 1
+LOGICAL READ from addr:6183 size:4096
+  read  [disk 3, offset 2061]  
+9097 1
+LOGICAL READ from addr:9097 size:4096
+  read  [disk 0, offset 3033]  
+8102 1
+LOGICAL READ from addr:8102 size:4096
+  read  [disk 3, offset 2700]  
+
+
+--------------------------
+0    |1    |2   |3    |p0           
+--------------------------
+5    |6    |7   |p1   | 4 
+--------------------------
+10   |11   |p2  | 8   | 9
+--------------------------
+15   |p3   |12  |13   | 14 
+--------------------------
+p4   |16   |17  | 18  | 19
+--------------------------
+
+==> Raid 5 calculation
+   *offset = addr / (numDisks - 1)
+   *disk = addr % numDisks
+
+
+
+3. Do the same as above, but use the -r flag to reverse the nature of each
+   problem.
+
+==> Reverse calculation
+   *addr = offset * (numDisks-1) ONLY APPROXIMATE
+   *Inverse Modulo not possible
+
+4. Now use the reverse flag but increase the size of each request with the -S
+  flag. Try specifying sizes of 8k, 12k, and 16k, while varying the RAID level.
+  What happens to the underlying I/O pattern when the size of the request
+  increases? Make sure to try this with the sequential workload too (-W
+  sequential); for what request sizes are RAID-4 and RAID-5 much more I/O
+  efficient?
+
+==> because we traverse each disk no matter what, we could use each iteration to write/read. So in case of 4 disk each 4k just request 16k sequential reads or writes, thus each maximum concurrency.   
+
+
+5. Use the timing mode of the simulator (-t) to estimate the perfor- mance of
+  100 random reads to the RAID, while varying the RAID levels, using 4 disks.
+
+==> ./raid.py -L 0 -t -n 1000 -c 
+
+-> disk:0  busy: 100.00  I/Os:   263 (sequential:0 nearly:16 random:247)
+   disk:1  busy:  92.48  I/Os:   248 (sequential:0 nearly:21 random:227)
+   disk:2  busy:  91.08  I/Os:   242 (sequential:0 nearly:19 random:223)
+   disk:3  busy:  92.59  I/Os:   247 (sequential:0 nearly:19 random:228)
+   
+   STAT totalTime 2583.7I
+
+==> 8Disks = STAT totalTime 1289.6  
+==> 16Disk = STAT totalTime 633.4 
+
+==> Sequential: STAT totalTime 35 
+
+==> writes(8Disks): STAT totalTime 1289.6
+==> writes(16Disks): STAT totalTime 633.4
+
+
+==> SequentialWrite(8Disks): STAT totalTime 22.5
+
+==> ./raid.py -L 1 -t -n 1000 -c
+
+->disk:0  busy: 100.00  I/Os:   263 (sequential:0 nearly:6 random:257)
+  disk:1  busy:  91.30  I/Os:   242 (sequential:0 nearly:8 random:234)
+  disk:2  busy:  92.90  I/Os:   248 (sequential:0 nearly:11 random:237)
+  disk:3  busy:  92.91  I/Os:   247 (sequential:0 nearly:11 random:236)
+  
+  STAT totalTime 2625.5
+
+==> 8Disks = STAT totalTime 1346.2
+==> 16Disks = STAT totalTime 685.9
+
+
+==> Sequential: STAT totalTime 59.9
+
+==> writes(8Disks): STAT totalTime 2583.7
+==> writes(16Disks): STAT totalTime 1289.6
+
+==> SequentialWrite(8Disks): STAT totalTime 35.0 
+
+==> ./raid.py -L 4 -t -n 1000 -c
+
+->disk:0  busy: 100.00  I/Os:   355 (sequential:2 nearly:23 random:330)
+  disk:1  busy:  91.60  I/Os:   319 (sequential:0 nearly:12 random:307)
+  disk:2  busy:  91.97  I/Os:   326 (sequential:1 nearly:21 random:304)
+  disk:3  busy:   0.00  I/Os:     0 (sequential:0 nearly:0 random:0)
+  
+  STAT totalTime 3467.0
+==> 8Disks = STAT totalTime 1397.0
+==> 16Disks = STAT totalTime 700.8
+
+==> Sequential: STAT totalTime 43.3
+
+==> writes(4Disks): STAT totalTime 9774.9
+==> writes(8Disks): STAT totalTime 9317.4
+==> writes(16Disks): STAT totalTime 8504.5
+==> writes(32Disks): STAT totalTime 7191.3
+
+==> SequentialWrite(8Disks): STAT totalTime 24.3
+
+==> ./raid.py -L 5 -t -n 1000 -c
+
+->disk:0  busy: 100.00  I/Os:   263 (sequential:0 nearly:11 random:252)
+  disk:1  busy:  92.55  I/Os:   248 (sequential:0 nearly:16 random:232)
+  disk:2  busy:  91.22  I/Os:   242 (sequential:0 nearly:14 random:228)
+  disk:3  busy:  92.55  I/Os:   247 (sequential:0 nearly:15 random:232)
+  
+  STAT totalTime 2607.1
+
+==> 8Disks = STAT totalTime 1303.1
+==> 16Disks = STAT totalTime 640.8
+
+==> Sequential: STAT totalTime 43.3
+
+==> writes(8Disks): STAT totalTime 2526.7 
+==> writes(16Disks): STAT totalTime 1274.8
+
+==> SequentialWrite(8Disks): STAT totalTime 24.3
+
+_________________________________________________________________________________________
+
+6. Do the same as above, but increase the number of disks. How does the
+  performance of each RAID level scale as the number of disks increases?
+
+  ==> The first two Raid levels doubles the disks halfes the time, for the last two Raid levels the times get better than half of the time.(approx. 60%)
+
+
+7. Do the same as above, but use all writes (-w 100) instead of reads. How does
+  the performance of each RAID level scale now? Can you do a rough estimate of
+  the time it will take to complete the workload of 100 random writes?
+
+==> With each Raid level we can see, that if we double the diskamount the write times are halved. With one exception: Raid level 4 scales approximatly logarithmic. 
+
+
+8. Run the timing mode one last time, but this time with a sequen- tial
+   workload (-W sequential). How does the performance vary with RAID level, and
+   when doing reads versus writes? How about when varying the size of each
+   request? What size should you write to a RAID when using RAID-4 or RAID-5?
+
+==> Between 12k and 16k you have 8 Disks.
+
+
+
+

@@ -1,0 +1,161 @@
+####################
+1. Compute the seek, rotation, and transfer times for the following sets of re- quests: -a 0, -a 6, -a 30, -a 7,30,8, an    d finally -a 10,11,12,13.
+2. Do the same requestsabove,butchangetheseekratetodifferentvalues:-S
+  2, -S 4, -S 8, -S 10, -S 40, -S 0.1. How do the times change?
+3. Dothesamerequestsabove,butchangetherotationrate:-R0.1,-R0.5,
+  -R 0.01. How do the times change?
+
+==> We change the -S value lower than 1 -> seek time will increase, greater than one the opposite happens
+==> If we change the -R value lower than 1 -> rotational delay increase, greater than one the opposite happens
+
+
+####################
+4. FIFOisnotalwaysbest,e.g.,withtherequeststream-a7,30,8,whator- der should the
+   requests be processed in? Run the shortest seek-time first (SSTF) scheduler (-p
+   SSTF) on this workload; how long should it take (seek, rotation, transfer) for
+   each request to be served?
+5. Nowusetheshortestaccess-timefirst(SATF)scheduler(-pSATF).Doesit make any
+   difference for -a 7,30,8 workload? Find a set of requests where SATF
+   outperforms SSTF; more generally, when is SATF better than SSTF?
+
+
+==> FIFO
+
+REQUESTS ['7', '30', '8']
+
+Block:   7  Seek:  0  Rotate: 15  Transfer: 30  Total:  45
+Block:  30  Seek: 80  Rotate:220  Transfer: 30  Total: 330
+Block:   8  Seek: 80  Rotate:310  Transfer: 30  Total: 420
+
+TOTALS      Seek:160  Rotate:545  Transfer: 90  Total: 795
+
+==> FIFO with -S 4
+
+REQUESTS ['7', '30', '8']
+
+Block:   7  Seek:  0  Rotate: 15  Transfer: 30  Total:  45
+Block:  30  Seek: 20  Rotate:280  Transfer: 30  Total: 330
+Block:   8  Seek: 20  Rotate: 10  Transfer: 30  Total:  60
+
+TOTALS      Seek: 40  Rotate:305  Transfer: 90  Total: 435
+
+==> SSTF 
+
+REQUESTS ['7', '30', '8']
+
+Block:   7  Seek:  0  Rotate: 15  Transfer: 30  Total:  45
+Block:   8  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+Block:  30  Seek: 80  Rotate:190  Transfer: 30  Total: 300
+
+TOTALS      Seek: 80  Rotate:205  Transfer: 90  Total: 375
+
+==> SSTF with -S 4
+
+REQUESTS ['7', '30', '8']
+
+Block:   7  Seek:  0  Rotate: 15  Transfer: 30  Total:  45
+Block:   8  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+Block:  30  Seek: 20  Rotate:250  Transfer: 30  Total: 300
+
+TOTALS      Seek: 20  Rotate:265  Transfer: 90  Total: 375
+
+
+==> SATF 
+
+REQUESTS ['7', '30', '8']
+
+Block:   7  Seek:  0  Rotate: 15  Transfer: 30  Total:  45
+Block:   8  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+Block:  30  Seek: 80  Rotate:190  Transfer: 30  Total: 300
+
+TOTALS      Seek: 80  Rotate:205  Transfer: 90  Total: 375
+
+
+6. Hereisarequeststreamtotry:-a10,11,12,13.Whatgoespoorlywhen it runs? Try
+  adding track skew to address this problem (-o skew). Given the default seek
+  rate, what should the skew be to maximize performance? What about for different
+  seek rates (e.g., -S 2, -S 4)? In general, could you write a formula to figure
+  out the skew?
+
+==> FIFO without skew
+
+REQUESTS ['10', '11', '12', '13']
+
+Block:  10  Seek:  0  Rotate:105  Transfer: 30  Total: 135
+Block:  11  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+Block:  12  Seek: 40  Rotate:320  Transfer: 30  Total: 390
+Block:  13  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+
+TOTALS      Seek: 40  Rotate:425  Transfer:120  Total: 585
+
+==> FIFO with skew
+
+REQUESTS ['10', '11', '12', '13']
+
+Block:  10  Seek:  0  Rotate:105  Transfer: 30  Total: 135
+Block:  11  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+Block:  12  Seek: 40  Rotate: 20  Transfer: 30  Total:  90
+Block:  13  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+
+TOTALS      Seek: 40  Rotate:125  Transfer:120  Total: 285
+
+==> FIFO with skew and -S 2
+
+REQUESTS ['10', '11', '12', '13']
+
+Block:  10  Seek:  0  Rotate:105  Transfer: 30  Total: 135
+Block:  11  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+Block:  12  Seek: 20  Rotate: 40  Transfer: 30  Total:  90
+Block:  13  Seek:  0  Rotate:  0  Transfer: 30  Total:  30
+
+TOTALS      Seek: 20  Rotate:145  Transfer:120  Total: 285
+
+=> The time we save on the seek will now be spend on the rotational delay
+
+=> FORMULA : (seek * rotation) / 30(=360/sectors)
+
+
+7. Specify a disk with different density per zone, e.g., -z 10,20,30, which
+  specifies the angular difference between blocks on the outer, middle, and inner
+  tracks. Run some random requests (e.g., -a -1 -A 5,-1,0, which specifies that
+  random requests should be used via the -a -1 flag and that five requests
+  ranging from 0 to the max be generated), and compute the seek, rotation, and
+  transfer times. Use different random seeds. What is the bandwidth (in sectors
+  per unit time) on the outer, middle, and inner tracks?
+
+==> To calculate the time to acess bounded sectors we just divide the 
+    rotationTime / numSectors (345/12 ~> 29) default outer track 
+
+
+8. Aschedulingwindowdetermineshowmanyrequeststhediskcanexamine at once.
+  Generate random workloads (e.g., -A 1000,-1,0, with different seeds) and see
+  how long the SATF scheduler takes when the scheduling win- dow is changed from
+  1 up to the number of requests. How big of a window is needed to maximize
+  performance? Hint: use the -c flag and don’t turn on graphics (-G) to run these
+  quickly. When the scheduling window is set to 1, does it matter which policy
+  you are using?
+
+  ==> If the scheduling window is the same size as our disk the performance is maximized 
+
+9. Create a series of requests to starve a particular request, assuming an SATF
+  policy. Given that sequence, how does it perform if you use a bounded SATF
+  (BSATF) scheduling approach? In this approach, you specify the scheduling
+  window (e.g., -w 4); the scheduler only moves onto the next window of requests
+  when all requests in the current window have been ser- viced. Does this solve
+  starvation? How does it perform, as compared to SATF? In general, how should a
+  disk make this trade-off between perfor- mance and starvation avoidance?
+
+
+  ==> ??????
+
+10. Alltheschedulingpolicieswehavelookedatthusfararegreedy;theypick the next
+  best option instead of looking for an optimal schedule. Can you find a set of
+  requests in which greedy is not optimal?
+
+  ==> If we pick the sector on the same angle or slightly behind the current sector, no policy will be able to efficently perform such a request.
+
+
+
+
+
+
